@@ -17,7 +17,7 @@ div.stButton > button { background-color:#E50914; color:white; font-weight:bold;
 div.stButton > button:hover { transform: scale(1.05); box-shadow: 0 0 15px #E50914; }
 .event-row { display: flex; overflow-x: auto; padding: 10px 0; }
 .event-card { min-width: 200px; margin-right: 20px; border-radius: 5px; transition: transform 0.3s, box-shadow 0.3s; }
-.event-card:hover { transform: scale(1.08); box-shadow: 0 0 25px #E50914; }
+.event-card:hover { transform: scale(1.08); box-shadow: 0 0 25px #E50914; cursor:pointer; }
 .event-card img { width: 100%; aspect-ratio: 2/3; border-radius:5px; object-fit: cover; }
 .event-caption { margin-top: 5px; font-size: 0.9rem; color: #ddd; }
 input, .stTextInput>div>input { background-color:#222; color:white; border-radius:5px; padding:5px; }
@@ -39,13 +39,11 @@ def send_email(receiver_email, ticket_id, block_index, event_name):
     if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
         st.info("Email not sent (credentials missing).")
         return
-
     try:
         msg = MIMEMultipart()
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = receiver_email
         msg['Subject'] = f"🎟 Your Ticket for {event_name} Confirmed"
-
         body = f"""
 Hello,
 
@@ -60,7 +58,6 @@ Please present this ticket at the event entry.
 Enjoy the event! 🎉
 """
         msg.attach(MIMEText(body, 'plain'))
-
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -77,6 +74,10 @@ def safe_image(path):
         placeholder = "https://placehold.co/300x450/E50914/FFFFFF?text=No+Image"
         st.image(placeholder, use_column_width=True)
 
+# --- Initialize session state for selected event ---
+if "selected_event" not in st.session_state:
+    st.session_state.selected_event = None
+
 # --- Role Selection ---
 role = st.radio("Select Mode:", ["Customer Booking", "Gate Attendant"], horizontal=True)
 
@@ -84,15 +85,21 @@ if role == "Customer Booking":
     st.title("🎉 Cultural Event Ticketing")
     st.subheader("Events")
     st.markdown('<div class="event-row">', unsafe_allow_html=True)
+
+    # Display clickable event cards
     for ename, edata in EVENTS_DATA.items():
-        # Tickets remaining
         status = chain.get_ticket_status()
         purchased = sum(s.get('purchased', 0) for s in status.values() if s.get('event')==ename)
         remaining = edata["capacity"] - purchased
-
-        # Image path
         image_path = os.path.join("images", f"{ename}.jpg")
 
+        # Use button for clickability
+        col1, col2 = st.columns([1,1])
+        clicked = st.button(f"{ename}", key=f"btn_{ename}")
+        if clicked:
+            st.session_state.selected_event = ename
+
+        # Render card
         card_html = f"""
         <div class="event-card">
             <img src="{image_path if os.path.exists(image_path) else ''}" alt="{ename}">
@@ -105,12 +112,17 @@ if role == "Customer Booking":
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
-    st.subheader("Select an Event to Book / Check-In")
-    choice = st.selectbox("Choose an event", list(EVENTS_DATA.keys()))
+    st.subheader("Event Details & Actions")
+
+    # Use selected event from card or dropdown
+    if st.session_state.selected_event:
+        choice = st.session_state.selected_event
+    else:
+        choice = st.selectbox("Choose an event", list(EVENTS_DATA.keys()))
+
     ev = EVENTS_DATA[choice]
 
-    image_path = os.path.join("images", f"{choice}.jpg")
-    safe_image(image_path)
+    safe_image(os.path.join("images", f"{choice}.jpg"))
     st.write(f"**Location:** {ev['location']}")
     st.write(f"**Time:** {ev['time']}")
     st.write(ev["description"])
