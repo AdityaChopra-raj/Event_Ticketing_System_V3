@@ -55,4 +55,65 @@ if role == "Customer Booking":
     st.write(f"Tickets Sold: {sum(s.get('purchased',0) for s in chain.get_ticket_status().values() if s.get('event')==choice)}")
     st.write(f"Guests Checked In: {sum(s.get('checked_in',0) for s in chain.get_ticket_status().values() if s.get('event')==choice)}")
 
-    tab1, tab2 = st
+    tab1, tab2 = st.tabs(["Buy Tickets", "Check-In (Attendant)"])
+
+    # Buy Tickets
+    with tab1:
+        name = st.text_input("Your Name")
+        email = st.text_input("Your Email")
+        num = st.number_input("Number of tickets", 1, 10, 1)
+        if st.button("Purchase"):
+            if not name or not email:
+                st.error("Name and Email required")
+            else:
+                sold = sum(s.get('purchased',0) for s in chain.get_ticket_status().values() if s.get('event')==choice)
+                if sold + num > ev["capacity"]:
+                    st.error("Not enough capacity!")
+                else:
+                    with st.spinner("Mining block..."):
+                        tid = str(uuid.uuid4())[:8]
+                        chain.add_transaction("PURCHASE", choice, tid, email, num)
+                        proof = chain.proof_of_work(chain.last_block['proof'])
+                        chain.create_block(proof, chain.hash(chain.last_block))
+                    st.success(f"✅ Ticket purchased! Ticket ID: {tid} | Block #{chain.last_block['index']}")
+
+    # Check-In
+    with tab2:
+        tid = st.text_input("Ticket ID")
+        email_v = st.text_input("Ticket Holder Email")
+        guests = st.number_input("Guests entering", 1, 10, 1)
+        if st.button("Verify Entry"):
+            status = chain.get_ticket_status()
+            if tid not in status:
+                st.error("Ticket ID not found")
+            elif status[tid].get('email') != email_v:
+                st.error("Email does not match")
+            elif status[tid].get('checked_in',0) + guests > status[tid].get('purchased',0):
+                st.error("Not enough unused entries")
+            else:
+                with st.spinner("Mining verification block..."):
+                    chain.add_transaction("VERIFY", status[tid]['event'], tid, email_v, guests)
+                    proof = chain.proof_of_work(chain.last_block['proof'])
+                    chain.create_block(proof, chain.hash(chain.last_block))
+                st.success(f"✅ Guests verified! Block #{chain.last_block['index']}")
+
+# Gate Attendant
+else:
+    st.title("🛂 Gate Attendant Verification")
+    tid = st.text_input("Ticket ID")
+    email_v = st.text_input("Ticket Holder Email")
+    guests = st.number_input("Guests entering", 1, 10, 1)
+    if st.button("Verify Entry", type="primary"):
+        status = chain.get_ticket_status()
+        if tid not in status:
+            st.error("❌ Ticket ID not found")
+        elif status[tid].get('email') != email_v:
+            st.error("❌ Email does not match")
+        elif status[tid].get('checked_in',0) + guests > status[tid].get('purchased',0):
+            st.error("❌ Not enough unused entries")
+        else:
+            with st.spinner("Mining verification block..."):
+                chain.add_transaction("VERIFY", status[tid]['event'], tid, email_v, guests)
+                proof = chain.proof_of_work(chain.last_block['proof'])
+                chain.create_block(proof, chain.hash(chain.last_block))
+            st.success(f"✅ Guests verified! Block #{chain.last_block['index']}")
