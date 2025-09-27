@@ -1,6 +1,5 @@
 import streamlit as st
 import uuid
-import os
 from blockchain import Blockchain
 from events_data import events as EVENTS_DATA
 import smtplib
@@ -16,14 +15,13 @@ st.markdown("""
 <style>
 body, .main { background-color: #141414; color: white; font-family: 'Helvetica', 'Arial', sans-serif; }
 div.stButton > button {
-    background-color:#E50914; color:white; font-weight:bold; border-radius:8px; padding:12px 25px; font-size:16px; transition: transform 0.2s, box-shadow 0.2s;
+    display:none;
 }
-div.stButton > button:hover { transform: scale(1.05); box-shadow: 0 0 15px #E50914; }
-.event-row { display: flex; overflow-x: auto; padding: 15px 0; }
-.event-card { min-width: 220px; margin-right: 25px; border-radius: 10px; background-color:#1E1E1E; padding:10px; transition: transform 0.2s, box-shadow 0.2s; }
-.event-card:hover { transform: scale(1.06); box-shadow: 0 0 20px #E50914; cursor:pointer; }
-.event-card img { width: 100%; aspect-ratio: 2/3; border-radius:8px; object-fit: cover; }
-.event-caption { font-size: 0.85rem; color: #ccc; margin: 3px 0; }
+.event-row { display:flex; overflow-x:auto; padding:15px 0; }
+.event-card { min-width:100px; height:100px; margin-right:20px; border-radius:12px; background-color:#1E1E1E; padding:5px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition: transform 0.2s, box-shadow 0.2s; }
+.event-card:hover { transform: scale(1.1); box-shadow:0 0 15px #E50914; cursor:pointer; }
+.event-card img { width:80px; height:80px; border-radius:12px; object-fit:cover; }
+.event-caption { font-size:0.7rem; color:#ccc; margin-top:5px; text-align:center; }
 input, .stTextInput>div>input, .stNumberInput>div>input { background-color:#222; color:white; border-radius:6px; padding:6px; font-size:14px; }
 .metric-card { background-color:#1E1E1E; padding:15px 20px; border-radius:10px; text-align:center; margin-bottom:15px; }
 .metric-card h3 { margin:0; font-size:1.5rem; }
@@ -94,25 +92,18 @@ if role == "Customer Booking":
     st.title("🎉 Cultural Event Ticketing")
     st.subheader("Available Events")
 
-    # Horizontal scrollable event cards
+    # Horizontal scrollable event cards with 80px images
     st.markdown('<div class="event-row">', unsafe_allow_html=True)
     for ename, ev in EVENTS_DATA.items():
-        status = chain.get_ticket_status()
-        purchased = sum(s.get('purchased',0) for s in status.values() if s.get('event')==ename)
-        remaining = ev["capacity"] - purchased
         image_path = ev["image"]
-
         clicked = st.button(f"Select {ename}", key=f"btn_{ename}")
         if clicked:
             st.session_state.selected_event = ename
 
         card_html = f"""
-        <div class="event-card">
+        <div class="event-card" onclick="document.querySelector('#btn_{ename} button').click();">
             <img src="{image_path}" alt="{ename}">
-            <h4>{ename}</h4>
-            <p class="event-caption">{ev['time']}</p>
-            <p class="event-caption">{ev['location']}</p>
-            <p class="event-caption"><strong>Remaining Tickets: {remaining}</strong></p>
+            <p class="event-caption">{ename}</p>
         </div>
         """
         st.markdown(card_html, unsafe_allow_html=True)
