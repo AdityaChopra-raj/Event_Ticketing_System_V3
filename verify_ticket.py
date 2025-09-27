@@ -6,21 +6,46 @@ import os
 st.set_page_config(page_title="🛂 Gate Attendant", layout="wide", page_icon="🛂")
 
 # --------------------------
-# CSS for Netflix Dark Theme & Buttons
+# CSS: Dark Theme + Hover + Rounded Buttons
 # --------------------------
 st.markdown("""
 <style>
 body, .main { background-color: #141414; color: white; font-family: 'Helvetica', 'Arial', sans-serif; }
-div.stButton > button { display:none; }
-input, .stTextInput>div>input, .stNumberInput>div>input { background-color:#222; color:white; border-radius:6px; padding:6px; font-size:14px; }
-.button-checkin { background-color:#1E90FF; color:white; border:none; border-radius:6px; padding:10px 20px; font-size:16px; font-weight:bold; margin-top:10px; cursor:pointer; }
+
+input, .stTextInput>div>input, .stNumberInput>div>input {
+    background-color:#222; color:white; border-radius:6px; padding:6px; font-size:14px;
+}
+
+.event-card {
+    background-color:#1E1E1E;
+    border-radius:12px;
+    padding:10px;
+    text-align:center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor:pointer;
+}
+.event-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px #E50914;
+}
+
+.button-checkin {
+    background-color:#1E90FF; color:white; border:none; border-radius:8px;
+    padding:10px 20px; font-size:16px; font-weight:bold; margin-top:10px; cursor:pointer;
+    transition: background 0.2s;
+}
+.button-checkin:hover { background-color:#3aa0ff; }
 </style>
 """, unsafe_allow_html=True)
 
 # --------------------------
-# Initialize Blockchain
+# Blockchain Init
 # --------------------------
 chain = Blockchain()
+
+# --------------------------
+# Session State for Selected Event
+# --------------------------
 if "selected_event" not in st.session_state:
     st.session_state.selected_event = None
 
@@ -28,21 +53,21 @@ st.title("🛂 Gate Attendant Verification")
 st.subheader("Select Event & Verify Guests")
 
 # --------------------------
-# Event selection cards (side-by-side)
+# Side-by-side Event Cards
 # --------------------------
 cols = st.columns(len(EVENTS_DATA))
 for i, (ename, ev) in enumerate(EVENTS_DATA.items()):
     with cols[i]:
-        clicked = st.button(f"{ename}", key=f"btn_gate_{ename}")
-        if clicked:
-            st.session_state.selected_event = ename
-
         img_path = ev['image']
         if os.path.exists(img_path):
-            st.image(img_path, width=80)
-        else:
-            st.warning(f"Image not found: {img_path}")
-        st.caption(ename)
+            st.image(img_path, width=100, output_format="auto")
+        st.markdown(f"""
+        <div class="event-card" onclick="document.getElementById('select_{ename}').click();">
+            <p>{ename}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Select", key=f"select_{ename}"):
+            st.session_state.selected_event = ename
 
 # --------------------------
 # Selected Event Details
@@ -51,14 +76,15 @@ choice = st.session_state.selected_event or st.selectbox("Choose Event", list(EV
 ev = EVENTS_DATA[choice]
 
 st.subheader(f"Verify Guests for {choice}")
+
 tid = st.text_input("Ticket ID")
 email_v = st.text_input("Ticket Holder Email")
 guests = st.number_input("Number of Guests Entering", 1, 10, 1)
 
 # --------------------------
-# Check-In Button (Styled)
+# Check-In Button
 # --------------------------
-checkin_clicked = st.button("Check-In", key="gate_checkin", help="Click to verify guests")
+checkin_clicked = st.button("Check-In", key="gate_checkin")
 if checkin_clicked:
     status = chain.get_ticket_status()
     if tid not in status:
@@ -75,7 +101,7 @@ if checkin_clicked:
         st.success(f"✅ Guests verified! Block #{chain.last_block['index']}")
 
 # --------------------------
-# Optional: Show summary for selected event
+# Event Metrics Summary
 # --------------------------
 st.markdown("---")
 st.write(f"**Event:** {choice}")
