@@ -20,20 +20,26 @@ div.stButton > button:hover { transform: scale(1.05); box-shadow: 0 0 15px #E509
 .event-card:hover { transform: scale(1.08); box-shadow: 0 0 25px #E50914; }
 .event-card img { width: 100%; aspect-ratio: 2/3; border-radius:5px; object-fit: cover; }
 .event-caption { margin-top: 5px; font-size: 0.9rem; color: #ddd; }
+input, .stTextInput>div>input { background-color:#222; color:white; border-radius:5px; padding:5px; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- Initialize Blockchain ---
-chain = Blockchain()  # persistent
-# Load email credentials safely
+chain = Blockchain()
+
+# --- Load Email Credentials from Streamlit Secrets ---
 EMAIL_ADDRESS = st.secrets.get("email", {}).get("address", None)
 EMAIL_PASSWORD = st.secrets.get("email", {}).get("password", None)
 
 if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
     st.warning("⚠️ Email credentials not found in Streamlit secrets. Email sending will be disabled.")
 
-
+# --- Email Function ---
 def send_email(receiver_email, ticket_id, block_index, event_name):
+    if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
+        st.info("Email not sent (credentials missing).")
+        return
+
     try:
         msg = MIMEMultipart()
         msg['From'] = EMAIL_ADDRESS
@@ -55,7 +61,6 @@ Enjoy the event! 🎉
 """
         msg.attach(MIMEText(body, 'plain'))
 
-        # Connect to Gmail SMTP
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -63,6 +68,14 @@ Enjoy the event! 🎉
         server.quit()
     except Exception as e:
         st.warning(f"Email could not be sent: {e}")
+
+# --- Safe Image Loader ---
+def safe_image(path):
+    if os.path.exists(path):
+        st.image(path, use_column_width=True)
+    else:
+        placeholder = "https://placehold.co/300x450/E50914/FFFFFF?text=No+Image"
+        st.image(placeholder, use_column_width=True)
 
 # --- Role Selection ---
 role = st.radio("Select Mode:", ["Customer Booking", "Gate Attendant"], horizontal=True)
@@ -72,20 +85,17 @@ if role == "Customer Booking":
     st.subheader("Events")
     st.markdown('<div class="event-row">', unsafe_allow_html=True)
     for ename, edata in EVENTS_DATA.items():
-        # Calculate remaining tickets
+        # Tickets remaining
         status = chain.get_ticket_status()
         purchased = sum(s.get('purchased', 0) for s in status.values() if s.get('event')==ename)
         remaining = edata["capacity"] - purchased
 
-        # Load image from local folder
+        # Image path
         image_path = os.path.join("images", f"{ename}.jpg")
-        if not os.path.exists(image_path):
-            image_path = None  # fallback
 
-        # Render card
         card_html = f"""
         <div class="event-card">
-            <img src="{image_path if image_path else ''}" alt="{ename}">
+            <img src="{image_path if os.path.exists(image_path) else ''}" alt="{ename}">
             <h4 style="margin:5px 0 2px 0;">{ename}</h4>
             <p class="event-caption">{edata['time']} – {edata['location']}</p>
             <p class="event-caption">Remaining: {remaining}/{edata['capacity']}</p>
@@ -100,7 +110,7 @@ if role == "Customer Booking":
     ev = EVENTS_DATA[choice]
 
     image_path = os.path.join("images", f"{choice}.jpg")
-    st.image(image_path if os.path.exists(image_path) else None, use_column_width=True)
+    safe_image(image_path)
     st.write(f"**Location:** {ev['location']}")
     st.write(f"**Time:** {ev['time']}")
     st.write(ev["description"])
