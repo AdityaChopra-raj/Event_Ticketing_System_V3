@@ -6,16 +6,19 @@ from events_data import events as EVENTS_DATA
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import math
 
 st.set_page_config(page_title="🎟 Cultural Event Ticketing", layout="wide", page_icon="🎟")
 
 # --------------------------
-# CSS: Netflix Dark Theme + Hover Effect + Rounded Buttons
+# CSS: Netflix Dark Theme + Hover + Rounded Buttons
 # --------------------------
 st.markdown("""
 <style>
 body, .main { background-color: #141414; color: white; font-family: 'Helvetica', 'Arial', sans-serif; }
-input, .stTextInput>div>input, .stNumberInput>div>input { background-color:#222; color:white; border-radius:6px; padding:6px; font-size:14px; }
+input, .stTextInput>div>input, .stNumberInput>div>input {
+    background-color:#222; color:white; border-radius:6px; padding:6px; font-size:14px;
+}
 
 .event-card {
     background-color:#1E1E1E;
@@ -91,19 +94,32 @@ if role == "Customer Booking":
     st.title("🎉 Cultural Event Ticketing")
     st.subheader("Available Events")
 
-    cols = st.columns(len(EVENTS_DATA))
-    for i, (ename, ev) in enumerate(EVENTS_DATA.items()):
-        with cols[i]:
-            img_path = ev['image']
-            if os.path.exists(img_path):
-                st.image(img_path, width=100, output_format="auto")
-            st.markdown(f"""
-            <div class="event-card" onclick="document.getElementById('select_{ename}').click();">
-                <p>{ename}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("Select", key=f"select_{ename}"):
-                st.session_state.selected_event = ename
+    # Responsive grid
+    cards_per_row = 3
+    total_events = len(EVENTS_DATA)
+    rows_needed = math.ceil(total_events / cards_per_row)
+    event_names = list(EVENTS_DATA.keys())
+
+    for r in range(rows_needed):
+        start_idx = r * cards_per_row
+        cols = st.columns(cards_per_row)
+        for i, col in enumerate(cols):
+            idx = start_idx + i
+            if idx >= total_events:
+                break
+            ename = event_names[idx]
+            ev = EVENTS_DATA[ename]
+            with col:
+                img_path = ev['image']
+                if os.path.exists(img_path):
+                    st.image(img_path, width=100, output_format="auto")
+                st.markdown(f"""
+                <div class="event-card" onclick="document.getElementById('select_{ename}').click();">
+                    <p>{ename}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("Select", key=f"select_{ename}"):
+                    st.session_state.selected_event = ename
 
     st.markdown("---")
     st.subheader("Event Details & Actions")
@@ -144,7 +160,7 @@ if role == "Customer Booking":
                     st.success(f"✅ Ticket purchased! Ticket ID: {tid} | Block #{chain.last_block['index']}")
                     send_email(email, tid, chain.last_block['index'], choice)
 
-    # Check-In
+    # Check-In Tab
     with tab2:
         tid = st.text_input("Ticket ID", key="checkin_id")
         email_v = st.text_input("Ticket Holder Email", key="checkin_email")
@@ -165,9 +181,40 @@ if role == "Customer Booking":
                     chain.create_block(proof, chain.hash(chain.last_block))
                 st.success(f"✅ Guests verified! Block #{chain.last_block['index']}")
 
+# --------------------------
 # Gate Attendant
+# --------------------------
 else:
     st.title("🛂 Gate Attendant Verification")
+    # Responsive grid selection for event
+    cards_per_row = 3
+    total_events = len(EVENTS_DATA)
+    rows_needed = math.ceil(total_events / cards_per_row)
+    event_names = list(EVENTS_DATA.keys())
+    for r in range(rows_needed):
+        start_idx = r * cards_per_row
+        cols = st.columns(cards_per_row)
+        for i, col in enumerate(cols):
+            idx = start_idx + i
+            if idx >= total_events:
+                break
+            ename = event_names[idx]
+            ev = EVENTS_DATA[ename]
+            with col:
+                img_path = ev['image']
+                if os.path.exists(img_path):
+                    st.image(img_path, width=100, output_format="auto")
+                st.markdown(f"""
+                <div class="event-card" onclick="document.getElementById('select_{ename}').click();">
+                    <p>{ename}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("Select", key=f"select_{ename}"):
+                    st.session_state.selected_event = ename
+
+    choice = st.session_state.selected_event or st.selectbox("Choose Event", list(EVENTS_DATA.keys()))
+    ev = EVENTS_DATA[choice]
+
     tid = st.text_input("Ticket ID", key="gate_tid")
     email_v = st.text_input("Ticket Holder Email", key="gate_email")
     guests = st.number_input("Guests entering", 1, 10, 1, key="gate_guests")
