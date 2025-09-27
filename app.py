@@ -14,63 +14,18 @@ st.set_page_config(page_title="🎟 Cultural Event Ticketing", layout="wide", pa
 # --------------------------
 st.markdown("""
 <style>
-/* Background & typography */
 body, .main { background-color: #141414; color: white; font-family: 'Helvetica', 'Arial', sans-serif; }
-
-/* Button styling */
 div.stButton > button {
-    background-color:#E50914;
-    color:white;
-    font-weight:bold;
-    border-radius:8px;
-    padding:12px 25px;
-    font-size:16px;
-    transition: transform 0.2s, box-shadow 0.2s;
+    background-color:#E50914; color:white; font-weight:bold; border-radius:8px; padding:12px 25px; font-size:16px; transition: transform 0.2s, box-shadow 0.2s;
 }
-div.stButton > button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 15px #E50914;
-}
-
-/* Event card container */
-.event-row {
-    display: flex;
-    overflow-x: auto;
-    padding: 15px 0;
-}
-.event-card {
-    min-width: 220px;
-    margin-right: 25px;
-    border-radius: 10px;
-    background-color:#1E1E1E;
-    padding:10px;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.event-card:hover {
-    transform: scale(1.06);
-    box-shadow: 0 0 20px #E50914;
-    cursor:pointer;
-}
+div.stButton > button:hover { transform: scale(1.05); box-shadow: 0 0 15px #E50914; }
+.event-row { display: flex; overflow-x: auto; padding: 15px 0; }
+.event-card { min-width: 220px; margin-right: 25px; border-radius: 10px; background-color:#1E1E1E; padding:10px; transition: transform 0.2s, box-shadow 0.2s; }
+.event-card:hover { transform: scale(1.06); box-shadow: 0 0 20px #E50914; cursor:pointer; }
 .event-card img { width: 100%; aspect-ratio: 2/3; border-radius:8px; object-fit: cover; }
 .event-caption { font-size: 0.85rem; color: #ccc; margin: 3px 0; }
-
-/* Inputs styling */
-input, .stTextInput>div>input, .stNumberInput>div>input {
-    background-color:#222;
-    color:white;
-    border-radius:6px;
-    padding:6px;
-    font-size:14px;
-}
-
-/* Dashboard metric cards */
-.metric-card {
-    background-color:#1E1E1E;
-    padding:15px 20px;
-    border-radius:10px;
-    text-align:center;
-    margin-bottom:15px;
-}
+input, .stTextInput>div>input, .stNumberInput>div>input { background-color:#222; color:white; border-radius:6px; padding:6px; font-size:14px; }
+.metric-card { background-color:#1E1E1E; padding:15px 20px; border-radius:10px; text-align:center; margin-bottom:15px; }
 .metric-card h3 { margin:0; font-size:1.5rem; }
 .metric-card p { margin:0; font-size:0.95rem; color:#ccc; }
 </style>
@@ -86,7 +41,6 @@ chain = Blockchain()
 # --------------------------
 EMAIL_ADDRESS = st.secrets.get("email", {}).get("address", None)
 EMAIL_PASSWORD = st.secrets.get("email", {}).get("password", None)
-
 if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
     st.warning("⚠️ Email credentials not found. Email sending will be disabled.")
 
@@ -123,16 +77,6 @@ Enjoy the event! 🎉
         st.warning(f"Email could not be sent: {e}")
 
 # --------------------------
-# Safe Image Loader
-# --------------------------
-def safe_image(path):
-    if os.path.exists(path):
-        st.image(path, use_column_width=True)
-    else:
-        placeholder = "https://placehold.co/300x450/E50914/FFFFFF?text=No+Image"
-        st.image(placeholder, use_column_width=True)
-
-# --------------------------
 # Session state for selected event
 # --------------------------
 if "selected_event" not in st.session_state:
@@ -156,16 +100,15 @@ if role == "Customer Booking":
         status = chain.get_ticket_status()
         purchased = sum(s.get('purchased',0) for s in status.values() if s.get('event')==ename)
         remaining = ev["capacity"] - purchased
-        image_path = os.path.join("images", f"{ename}.jpg")
+        image_path = ev["image"]
 
-        # Clickable card simulated with button
         clicked = st.button(f"Select {ename}", key=f"btn_{ename}")
         if clicked:
             st.session_state.selected_event = ename
 
         card_html = f"""
         <div class="event-card">
-            <img src="{image_path if os.path.exists(image_path) else ''}" alt="{ename}">
+            <img src="{image_path}" alt="{ename}">
             <h4>{ename}</h4>
             <p class="event-caption">{ev['time']}</p>
             <p class="event-caption">{ev['location']}</p>
@@ -178,11 +121,10 @@ if role == "Customer Booking":
     st.markdown("---")
     st.subheader("Event Details & Actions")
 
-    # Determine selected event
     choice = st.session_state.selected_event or st.selectbox("Choose an event", list(EVENTS_DATA.keys()))
     ev = EVENTS_DATA[choice]
 
-    safe_image(os.path.join("images", f"{choice}.jpg"))
+    st.image(ev["image"], use_column_width=True)
     st.write(f"**Location:** {ev['location']}")
     st.write(f"**Time:** {ev['time']}")
     st.write(ev["description"])
