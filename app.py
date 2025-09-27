@@ -9,19 +9,26 @@ from email.mime.multipart import MIMEMultipart
 st.set_page_config(page_title="🎟 Cultural Event Ticketing", layout="wide", page_icon="🎟")
 
 # --------------------------
-# CSS for professional UX
+# CSS for horizontal square event cards and theme
 # --------------------------
 st.markdown("""
 <style>
 body, .main { background-color: #141414; color: white; font-family: 'Helvetica', 'Arial', sans-serif; }
-div.stButton > button {
-    display:none;
+div.stButton > button { display:none; }
+
+.event-row { display:flex; overflow-x:auto; padding:15px 0; gap:15px; }
+.event-card {
+    width:100px; height:100px; flex-shrink:0;
+    border-radius:12px;
+    background-color:#1E1E1E;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
-.event-row { display:flex; overflow-x:auto; padding:15px 0; }
-.event-card { min-width:100px; height:100px; margin-right:20px; border-radius:12px; background-color:#1E1E1E; padding:5px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition: transform 0.2s, box-shadow 0.2s; }
 .event-card:hover { transform: scale(1.1); box-shadow:0 0 15px #E50914; cursor:pointer; }
 .event-card img { width:80px; height:80px; border-radius:12px; object-fit:cover; }
-.event-caption { font-size:0.7rem; color:#ccc; margin-top:5px; text-align:center; }
+.event-caption { font-size:0.7rem; color:#ccc; margin-top:3px; text-align:center; }
+
 input, .stTextInput>div>input, .stNumberInput>div>input { background-color:#222; color:white; border-radius:6px; padding:6px; font-size:14px; }
 .metric-card { background-color:#1E1E1E; padding:15px 20px; border-radius:10px; text-align:center; margin-bottom:15px; }
 .metric-card h3 { margin:0; font-size:1.5rem; }
@@ -92,17 +99,16 @@ if role == "Customer Booking":
     st.title("🎉 Cultural Event Ticketing")
     st.subheader("Available Events")
 
-    # Horizontal scrollable event cards with 80px images
+    # Horizontal scrollable event cards
     st.markdown('<div class="event-row">', unsafe_allow_html=True)
     for ename, ev in EVENTS_DATA.items():
-        image_path = ev["image"]
         clicked = st.button(f"Select {ename}", key=f"btn_{ename}")
         if clicked:
             st.session_state.selected_event = ename
 
         card_html = f"""
         <div class="event-card" onclick="document.querySelector('#btn_{ename} button').click();">
-            <img src="{image_path}" alt="{ename}">
+            <img src="{ev['image']}" alt="{ename}">
             <p class="event-caption">{ename}</p>
         </div>
         """
