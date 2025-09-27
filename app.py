@@ -25,10 +25,13 @@ div.stButton > button:hover { transform: scale(1.05); box-shadow: 0 0 15px #E509
 
 # --- Initialize Blockchain ---
 chain = Blockchain()  # persistent
+# Load email credentials safely
+EMAIL_ADDRESS = st.secrets.get("email", {}).get("address", None)
+EMAIL_PASSWORD = st.secrets.get("email", {}).get("password", None)
 
-# --- Load Email Credentials from Streamlit Secrets ---
-EMAIL_ADDRESS = st.secrets["email"]["address"]
-EMAIL_PASSWORD = st.secrets["email"]["password"]
+if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
+    st.warning("⚠️ Email credentials not found in Streamlit secrets. Email sending will be disabled.")
+
 
 def send_email(receiver_email, ticket_id, block_index, event_name):
     try:
