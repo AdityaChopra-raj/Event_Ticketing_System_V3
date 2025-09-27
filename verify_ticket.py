@@ -1,6 +1,7 @@
 import streamlit as st
 from blockchain import Blockchain
 from events_data import events as EVENTS_DATA
+import os
 
 st.set_page_config(page_title="🛂 Gate Attendant", layout="wide", page_icon="🛂")
 
@@ -19,14 +20,17 @@ if "selected_event" not in st.session_state:
 st.title("🛂 Gate Attendant Verification")
 st.subheader("Select Event & Verify Guests")
 
-# Side-by-side cards using Streamlit columns
+# Side-by-side cards
 cols = st.columns(len(EVENTS_DATA))
 for i, (ename, ev) in enumerate(EVENTS_DATA.items()):
     with cols[i]:
         clicked = st.button(f"{ename}", key=f"btn_gate_{ename}")
         if clicked:
             st.session_state.selected_event = ename
-        st.image(ev['image'], width=80)
+
+        img_path = ev['image']
+        if os.path.exists(img_path):
+            st.image(img_path, width=80)
         st.caption(ename)
 
 choice = st.session_state.selected_event or st.selectbox("Choose Event", list(EVENTS_DATA.keys()))
