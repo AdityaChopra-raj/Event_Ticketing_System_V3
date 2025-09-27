@@ -178,4 +178,7 @@ else:
             st.error("❌ Not enough unused entries")
         else:
             with st.spinner("Mining verification block..."):
-                chain.add_transaction("VERIFY", status_
+                chain.add_transaction("VERIFY", status[tid]['event'], tid, email_v, guests)
+                proof = chain.proof_of_work(chain.last_block['proof'])
+                chain.create_block(proof, chain.hash(chain.last_block))
+            st.success(f"✅ Guests verified! Block #{chain.last_block['index']}")
