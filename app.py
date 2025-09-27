@@ -1,11 +1,15 @@
 import streamlit as st
 import uuid
+import os
 from blockchain import Blockchain
 from events_data import events as EVENTS_DATA
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 st.set_page_config(page_title="🎟 Cultural Event Ticketing", layout="wide", page_icon="🎟")
 
-# Netflix-inspired CSS
+# --- Netflix-inspired CSS ---
 st.markdown("""
 <style>
 body, .main { background-color: #141414; color: white; font-family: 'Helvetica', 'Arial', sans-serif; }
@@ -19,8 +23,45 @@ div.stButton > button:hover { transform: scale(1.05); box-shadow: 0 0 15px #E509
 </style>
 """, unsafe_allow_html=True)
 
+# --- Initialize Blockchain ---
 chain = Blockchain()  # persistent
 
+# --- Load Email Credentials from Streamlit Secrets ---
+EMAIL_ADDRESS = st.secrets["email"]["address"]
+EMAIL_PASSWORD = st.secrets["email"]["password"]
+
+def send_email(receiver_email, ticket_id, block_index, event_name):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = receiver_email
+        msg['Subject'] = f"🎟 Your Ticket for {event_name} Confirmed"
+
+        body = f"""
+Hello,
+
+Your ticket has been successfully purchased.
+
+Event: {event_name}
+Ticket ID: {ticket_id}
+Block #: {block_index}
+
+Please present this ticket at the event entry.
+
+Enjoy the event! 🎉
+"""
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Connect to Gmail SMTP
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        st.warning(f"Email could not be sent: {e}")
+
+# --- Role Selection ---
 role = st.radio("Select Mode:", ["Customer Booking", "Gate Attendant"], horizontal=True)
 
 if role == "Customer Booking":
@@ -28,12 +69,20 @@ if role == "Customer Booking":
     st.subheader("Events")
     st.markdown('<div class="event-row">', unsafe_allow_html=True)
     for ename, edata in EVENTS_DATA.items():
+        # Calculate remaining tickets
         status = chain.get_ticket_status()
         purchased = sum(s.get('purchased', 0) for s in status.values() if s.get('event')==ename)
         remaining = edata["capacity"] - purchased
+
+        # Load image from local folder
+        image_path = os.path.join("images", f"{ename}.jpg")
+        if not os.path.exists(image_path):
+            image_path = None  # fallback
+
+        # Render card
         card_html = f"""
         <div class="event-card">
-            <img src="{edata['image']}" alt="{ename}">
+            <img src="{image_path if image_path else ''}" alt="{ename}">
             <h4 style="margin:5px 0 2px 0;">{ename}</h4>
             <p class="event-caption">{edata['time']} – {edata['location']}</p>
             <p class="event-caption">Remaining: {remaining}/{edata['capacity']}</p>
@@ -47,7 +96,8 @@ if role == "Customer Booking":
     choice = st.selectbox("Choose an event", list(EVENTS_DATA.keys()))
     ev = EVENTS_DATA[choice]
 
-    st.image(ev["image"], use_column_width=True)
+    image_path = os.path.join("images", f"{choice}.jpg")
+    st.image(image_path if os.path.exists(image_path) else None, use_column_width=True)
     st.write(f"**Location:** {ev['location']}")
     st.write(f"**Time:** {ev['time']}")
     st.write(ev["description"])
@@ -57,7 +107,7 @@ if role == "Customer Booking":
 
     tab1, tab2 = st.tabs(["Buy Tickets", "Check-In (Attendant)"])
 
-    # Buy Tickets
+    # --- Buy Tickets ---
     with tab1:
         name = st.text_input("Your Name")
         email = st.text_input("Your Email")
@@ -76,12 +126,13 @@ if role == "Customer Booking":
                         proof = chain.proof_of_work(chain.last_block['proof'])
                         chain.create_block(proof, chain.hash(chain.last_block))
                     st.success(f"✅ Ticket purchased! Ticket ID: {tid} | Block #{chain.last_block['index']}")
+                    send_email(email, tid, chain.last_block['index'], choice)
 
-    # Check-In
+    # --- Check-In ---
     with tab2:
-        tid = st.text_input("Ticket ID")
-        email_v = st.text_input("Ticket Holder Email")
-        guests = st.number_input("Guests entering", 1, 10, 1)
+        tid = st.text_input("Ticket ID", key="checkin_id")
+        email_v = st.text_input("Ticket Holder Email", key="checkin_email")
+        guests = st.number_input("Guests entering", 1, 10, 1, key="checkin_guests")
         if st.button("Verify Entry"):
             status = chain.get_ticket_status()
             if tid not in status:
@@ -97,12 +148,12 @@ if role == "Customer Booking":
                     chain.create_block(proof, chain.hash(chain.last_block))
                 st.success(f"✅ Guests verified! Block #{chain.last_block['index']}")
 
-# Gate Attendant
+# --- Gate Attendant ---
 else:
     st.title("🛂 Gate Attendant Verification")
-    tid = st.text_input("Ticket ID")
-    email_v = st.text_input("Ticket Holder Email")
-    guests = st.number_input("Guests entering", 1, 10, 1)
+    tid = st.text_input("Ticket ID", key="gate_tid")
+    email_v = st.text_input("Ticket Holder Email", key="gate_email")
+    guests = st.number_input("Guests entering", 1, 10, 1, key="gate_guests")
     if st.button("Verify Entry", type="primary"):
         status = chain.get_ticket_status()
         if tid not in status:
