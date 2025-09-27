@@ -9,32 +9,90 @@ from email.mime.multipart import MIMEMultipart
 
 st.set_page_config(page_title="🎟 Cultural Event Ticketing", layout="wide", page_icon="🎟")
 
-# --- Netflix-inspired CSS ---
+# --------------------------
+# CSS for professional UX
+# --------------------------
 st.markdown("""
 <style>
+/* Background & typography */
 body, .main { background-color: #141414; color: white; font-family: 'Helvetica', 'Arial', sans-serif; }
-div.stButton > button { background-color:#E50914; color:white; font-weight:bold; border-radius:5px; padding:10px 20px; transition: transform 0.3s, box-shadow 0.3s; }
-div.stButton > button:hover { transform: scale(1.05); box-shadow: 0 0 15px #E50914; }
-.event-row { display: flex; overflow-x: auto; padding: 10px 0; }
-.event-card { min-width: 200px; margin-right: 20px; border-radius: 5px; transition: transform 0.3s, box-shadow 0.3s; }
-.event-card:hover { transform: scale(1.08); box-shadow: 0 0 25px #E50914; cursor:pointer; }
-.event-card img { width: 100%; aspect-ratio: 2/3; border-radius:5px; object-fit: cover; }
-.event-caption { margin-top: 5px; font-size: 0.9rem; color: #ddd; }
-input, .stTextInput>div>input { background-color:#222; color:white; border-radius:5px; padding:5px; }
+
+/* Button styling */
+div.stButton > button {
+    background-color:#E50914;
+    color:white;
+    font-weight:bold;
+    border-radius:8px;
+    padding:12px 25px;
+    font-size:16px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+div.stButton > button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px #E50914;
+}
+
+/* Event card container */
+.event-row {
+    display: flex;
+    overflow-x: auto;
+    padding: 15px 0;
+}
+.event-card {
+    min-width: 220px;
+    margin-right: 25px;
+    border-radius: 10px;
+    background-color:#1E1E1E;
+    padding:10px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.event-card:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 20px #E50914;
+    cursor:pointer;
+}
+.event-card img { width: 100%; aspect-ratio: 2/3; border-radius:8px; object-fit: cover; }
+.event-caption { font-size: 0.85rem; color: #ccc; margin: 3px 0; }
+
+/* Inputs styling */
+input, .stTextInput>div>input, .stNumberInput>div>input {
+    background-color:#222;
+    color:white;
+    border-radius:6px;
+    padding:6px;
+    font-size:14px;
+}
+
+/* Dashboard metric cards */
+.metric-card {
+    background-color:#1E1E1E;
+    padding:15px 20px;
+    border-radius:10px;
+    text-align:center;
+    margin-bottom:15px;
+}
+.metric-card h3 { margin:0; font-size:1.5rem; }
+.metric-card p { margin:0; font-size:0.95rem; color:#ccc; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Initialize Blockchain ---
+# --------------------------
+# Initialize blockchain
+# --------------------------
 chain = Blockchain()
 
-# --- Load Email Credentials from Streamlit Secrets ---
+# --------------------------
+# Load Email Credentials
+# --------------------------
 EMAIL_ADDRESS = st.secrets.get("email", {}).get("address", None)
 EMAIL_PASSWORD = st.secrets.get("email", {}).get("password", None)
 
 if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-    st.warning("⚠️ Email credentials not found in Streamlit secrets. Email sending will be disabled.")
+    st.warning("⚠️ Email credentials not found. Email sending will be disabled.")
 
-# --- Email Function ---
+# --------------------------
+# Email Function
+# --------------------------
 def send_email(receiver_email, ticket_id, block_index, event_name):
     if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
         st.info("Email not sent (credentials missing).")
@@ -43,7 +101,7 @@ def send_email(receiver_email, ticket_id, block_index, event_name):
         msg = MIMEMultipart()
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = receiver_email
-        msg['Subject'] = f"🎟 Your Ticket for {event_name} Confirmed"
+        msg['Subject'] = f"🎟 Ticket Confirmation: {event_name}"
         body = f"""
 Hello,
 
@@ -52,8 +110,6 @@ Your ticket has been successfully purchased.
 Event: {event_name}
 Ticket ID: {ticket_id}
 Block #: {block_index}
-
-Please present this ticket at the event entry.
 
 Enjoy the event! 🎉
 """
@@ -66,7 +122,9 @@ Enjoy the event! 🎉
     except Exception as e:
         st.warning(f"Email could not be sent: {e}")
 
-# --- Safe Image Loader ---
+# --------------------------
+# Safe Image Loader
+# --------------------------
 def safe_image(path):
     if os.path.exists(path):
         st.image(path, use_column_width=True)
@@ -74,38 +132,44 @@ def safe_image(path):
         placeholder = "https://placehold.co/300x450/E50914/FFFFFF?text=No+Image"
         st.image(placeholder, use_column_width=True)
 
-# --- Initialize session state for selected event ---
+# --------------------------
+# Session state for selected event
+# --------------------------
 if "selected_event" not in st.session_state:
     st.session_state.selected_event = None
 
-# --- Role Selection ---
+# --------------------------
+# Role Selection
+# --------------------------
 role = st.radio("Select Mode:", ["Customer Booking", "Gate Attendant"], horizontal=True)
 
+# --------------------------
+# Customer Booking
+# --------------------------
 if role == "Customer Booking":
     st.title("🎉 Cultural Event Ticketing")
-    st.subheader("Events")
-    st.markdown('<div class="event-row">', unsafe_allow_html=True)
+    st.subheader("Available Events")
 
-    # Display clickable event cards
-    for ename, edata in EVENTS_DATA.items():
+    # Horizontal scrollable event cards
+    st.markdown('<div class="event-row">', unsafe_allow_html=True)
+    for ename, ev in EVENTS_DATA.items():
         status = chain.get_ticket_status()
-        purchased = sum(s.get('purchased', 0) for s in status.values() if s.get('event')==ename)
-        remaining = edata["capacity"] - purchased
+        purchased = sum(s.get('purchased',0) for s in status.values() if s.get('event')==ename)
+        remaining = ev["capacity"] - purchased
         image_path = os.path.join("images", f"{ename}.jpg")
 
-        # Use button for clickability
-        col1, col2 = st.columns([1,1])
-        clicked = st.button(f"{ename}", key=f"btn_{ename}")
+        # Clickable card simulated with button
+        clicked = st.button(f"Select {ename}", key=f"btn_{ename}")
         if clicked:
             st.session_state.selected_event = ename
 
-        # Render card
         card_html = f"""
         <div class="event-card">
             <img src="{image_path if os.path.exists(image_path) else ''}" alt="{ename}">
-            <h4 style="margin:5px 0 2px 0;">{ename}</h4>
-            <p class="event-caption">{edata['time']} – {edata['location']}</p>
-            <p class="event-caption">Remaining: {remaining}/{edata['capacity']}</p>
+            <h4>{ename}</h4>
+            <p class="event-caption">{ev['time']}</p>
+            <p class="event-caption">{ev['location']}</p>
+            <p class="event-caption"><strong>Remaining Tickets: {remaining}</strong></p>
         </div>
         """
         st.markdown(card_html, unsafe_allow_html=True)
@@ -114,12 +178,8 @@ if role == "Customer Booking":
     st.markdown("---")
     st.subheader("Event Details & Actions")
 
-    # Use selected event from card or dropdown
-    if st.session_state.selected_event:
-        choice = st.session_state.selected_event
-    else:
-        choice = st.selectbox("Choose an event", list(EVENTS_DATA.keys()))
-
+    # Determine selected event
+    choice = st.session_state.selected_event or st.selectbox("Choose an event", list(EVENTS_DATA.keys()))
     ev = EVENTS_DATA[choice]
 
     safe_image(os.path.join("images", f"{choice}.jpg"))
@@ -132,12 +192,12 @@ if role == "Customer Booking":
 
     tab1, tab2 = st.tabs(["Buy Tickets", "Check-In (Attendant)"])
 
-    # --- Buy Tickets ---
+    # ----- Buy Tickets -----
     with tab1:
         name = st.text_input("Your Name")
         email = st.text_input("Your Email")
         num = st.number_input("Number of tickets", 1, 10, 1)
-        if st.button("Purchase"):
+        if st.button("Purchase Ticket"):
             if not name or not email:
                 st.error("Name and Email required")
             else:
@@ -153,7 +213,7 @@ if role == "Customer Booking":
                     st.success(f"✅ Ticket purchased! Ticket ID: {tid} | Block #{chain.last_block['index']}")
                     send_email(email, tid, chain.last_block['index'], choice)
 
-    # --- Check-In ---
+    # ----- Check-In -----
     with tab2:
         tid = st.text_input("Ticket ID", key="checkin_id")
         email_v = st.text_input("Ticket Holder Email", key="checkin_email")
@@ -173,7 +233,9 @@ if role == "Customer Booking":
                     chain.create_block(proof, chain.hash(chain.last_block))
                 st.success(f"✅ Guests verified! Block #{chain.last_block['index']}")
 
-# --- Gate Attendant ---
+# --------------------------
+# Gate Attendant
+# --------------------------
 else:
     st.title("🛂 Gate Attendant Verification")
     tid = st.text_input("Ticket ID", key="gate_tid")
