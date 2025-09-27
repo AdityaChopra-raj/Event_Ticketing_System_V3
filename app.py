@@ -10,16 +10,15 @@ from email.mime.multipart import MIMEMultipart
 st.set_page_config(page_title="🎟 Cultural Event Ticketing", layout="wide", page_icon="🎟")
 
 # --------------------------
-# CSS for Netflix Dark Theme
+# CSS for Netflix Dark Theme & Buttons
 # --------------------------
 st.markdown("""
 <style>
 body, .main { background-color: #141414; color: white; font-family: 'Helvetica', 'Arial', sans-serif; }
 div.stButton > button { display:none; }
 input, .stTextInput>div>input, .stNumberInput>div>input { background-color:#222; color:white; border-radius:6px; padding:6px; font-size:14px; }
-.metric-card { background-color:#1E1E1E; padding:15px 20px; border-radius:10px; text-align:center; margin-bottom:15px; }
-.metric-card h3 { margin:0; font-size:1.5rem; }
-.metric-card p { margin:0; font-size:0.95rem; color:#ccc; }
+.button-buy { background-color:#E50914; color:white; border:none; border-radius:6px; padding:10px 20px; font-size:16px; font-weight:bold; margin-top:10px; cursor:pointer; }
+.button-checkin { background-color:#1E90FF; color:white; border:none; border-radius:6px; padding:10px 20px; font-size:16px; font-weight:bold; margin-top:10px; cursor:pointer; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -124,7 +123,8 @@ if role == "Customer Booking":
         name = st.text_input("Your Name")
         email = st.text_input("Your Email")
         num = st.number_input("Number of tickets", 1, 10, 1)
-        if st.button("Purchase Ticket"):
+        buy_clicked = st.button("Buy Ticket", key="buy_button")
+        if buy_clicked:
             if not name or not email:
                 st.error("Name and Email required")
             else:
@@ -145,7 +145,8 @@ if role == "Customer Booking":
         tid = st.text_input("Ticket ID", key="checkin_id")
         email_v = st.text_input("Ticket Holder Email", key="checkin_email")
         guests = st.number_input("Guests entering", 1, 10, 1, key="checkin_guests")
-        if st.button("Verify Entry"):
+        checkin_clicked = st.button("Check-In", key="checkin_button")
+        if checkin_clicked:
             status = chain.get_ticket_status()
             if tid not in status:
                 st.error("Ticket ID not found")
@@ -168,7 +169,8 @@ else:
     tid = st.text_input("Ticket ID", key="gate_tid")
     email_v = st.text_input("Ticket Holder Email", key="gate_email")
     guests = st.number_input("Guests entering", 1, 10, 1, key="gate_guests")
-    if st.button("Verify Entry", type="primary"):
+    verify_clicked = st.button("Check-In", type="primary", key="gate_checkin")
+    if verify_clicked:
         status = chain.get_ticket_status()
         if tid not in status:
             st.error("❌ Ticket ID not found")
