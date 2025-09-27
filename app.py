@@ -1,5 +1,6 @@
 import streamlit as st
 import uuid
+import os
 from blockchain import Blockchain
 from events_data import events as EVENTS_DATA
 import smtplib
@@ -9,7 +10,7 @@ from email.mime.multipart import MIMEMultipart
 st.set_page_config(page_title="🎟 Cultural Event Ticketing", layout="wide", page_icon="🎟")
 
 # --------------------------
-# CSS for Netflix dark theme
+# CSS for Netflix Dark Theme
 # --------------------------
 st.markdown("""
 <style>
@@ -23,7 +24,7 @@ input, .stTextInput>div>input, .stNumberInput>div>input { background-color:#222;
 """, unsafe_allow_html=True)
 
 # --------------------------
-# Initialize blockchain
+# Initialize Blockchain
 # --------------------------
 chain = Blockchain()
 
@@ -92,7 +93,12 @@ if role == "Customer Booking":
             clicked = st.button(f"Select {ename}", key=f"btn_{ename}")
             if clicked:
                 st.session_state.selected_event = ename
-            st.image(ev['image'], width=80)
+
+            img_path = ev['image']
+            if os.path.exists(img_path):
+                st.image(img_path, width=80)
+            else:
+                st.warning(f"Image not found: {img_path}")
             st.caption(ename)
 
     st.markdown("---")
@@ -101,7 +107,9 @@ if role == "Customer Booking":
     choice = st.session_state.selected_event or st.selectbox("Choose an event", list(EVENTS_DATA.keys()))
     ev = EVENTS_DATA[choice]
 
-    st.image(ev["image"], use_column_width=True)
+    img_path = ev['image']
+    if os.path.exists(img_path):
+        st.image(img_path, use_column_width=True)
     st.write(f"**Location:** {ev['location']}")
     st.write(f"**Time:** {ev['time']}")
     st.write(ev["description"])
@@ -170,7 +178,4 @@ else:
             st.error("❌ Not enough unused entries")
         else:
             with st.spinner("Mining verification block..."):
-                chain.add_transaction("VERIFY", status[tid]['event'], tid, email_v, guests)
-                proof = chain.proof_of_work(chain.last_block['proof'])
-                chain.create_block(proof, chain.hash(chain.last_block))
-            st.success(f"✅ Guests verified! Block #{chain.last_block['index']}")
+                chain.add_transaction("VERIFY", status_
